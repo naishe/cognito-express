@@ -1,10 +1,10 @@
-"use strict";
+import chai from chai;
+import chaiAsPromise from 'chai-as-promised';
+import Strategy from '..';
+import rewire from 'rewire';
 
-const chai = require("chai"),
-	chaiAsPromised = require("chai-as-promised"),
-	Strategy = require(".."),
-	rewire = require("rewire"),
-	expect = chai.expect,
+const	expect =
+chai.expect,
 	strategyConfig = {
 		region: "us-east-1",
 		cognitoUserPoolId: "us-east-1_PNBFQ9W7X",
