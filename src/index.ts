@@ -1,8 +1,8 @@
-import * as jwkToPem from "jwk-to-pem";
-import * as request from "request-promise";
-import * as jwt from "jsonwebtoken";
-import { CognitoExpressConfig } from "./CognitoExpressConfig";
-import JwtVerifyParams from "./JwtVerifyParams";
+import * as jwkToPem from 'jwk-to-pem';
+import * as request from 'request-promise';
+import * as jwt from 'jsonwebtoken';
+import { CognitoExpressConfig } from './CognitoExpressConfig';
+import JwtVerifyParams from './JwtVerifyParams';
 
 export const DEFAULT_TOKEN_EXPIRATION = `3600000`;
 
@@ -17,7 +17,7 @@ class CognitoExpress {
   constructor(config: CognitoExpressConfig) {
     if (!config)
       throw new TypeError(
-        "Options not found. Please refer to README for usage example at https://github.com/ghdna/cognito-express"
+        'Options not found. Please refer to README for usage example at https://github.com/ghdna/cognito-express',
       );
 
     validateConfig(config);
@@ -31,7 +31,7 @@ class CognitoExpress {
   async init(callback: (isOk: boolean) => void) {
     return request(`${this.iss}/.well-known/jwks.json`)
       .then((response) => {
-        let keys = JSON.parse(response)["keys"];
+        let keys = JSON.parse(response)['keys'];
         for (let i = 0; i < keys.length; i++) {
           let key_id = keys[i].kid;
           let modulus = keys[i].n;
@@ -45,7 +45,7 @@ class CognitoExpress {
       })
       .catch((err) => {
         callback(false);
-        throw new TypeError("Unable to generate certificate due to \n" + err);
+        throw new TypeError('Unable to generate certificate due to \n' + err);
       });
   }
 
@@ -57,11 +57,9 @@ class CognitoExpress {
         complete: true,
       }) as { [k: string]: any } | null;
 
-      if (!decodedJwt)
-        return callback(new Error(`Not a valid JWT token`), null);
+      if (!decodedJwt) return callback(new Error(`Not a valid JWT token`), null);
 
-      if (decodedJwt.payload.iss !== this.iss)
-        return callback(new Error(`token is not from your User Pool`), null);
+      if (decodedJwt.payload.iss !== this.iss) return callback(new Error(`token is not from your User Pool`), null);
 
       if (decodedJwt.payload.token_use !== this.tokenUse)
         return callback(new Error(`Not an ${this.tokenUse} token`), null);
@@ -69,8 +67,7 @@ class CognitoExpress {
       let kid = decodedJwt.header.kid;
       let pem = this.pems && this.pems[kid];
 
-      if (!pem)
-        return callback(new Error(`Invalid ${this.tokenUse} token`), null);
+      if (!pem) return callback(new Error(`Invalid ${this.tokenUse} token`), null);
 
       let params = {
         token: token,
@@ -104,22 +101,16 @@ function validateConfig(config: CognitoExpressConfig): boolean | never {
   let configurationPassed = false;
   switch (true) {
     case !config.region:
-      throw new TypeError("AWS Region not specified in constructor");
+      throw new TypeError('AWS Region not specified in constructor');
       break;
     case !config.cognitoUserPoolId:
-      throw new TypeError(
-        "Cognito User Pool ID is not specified in constructor"
-      );
+      throw new TypeError('Cognito User Pool ID is not specified in constructor');
       break;
     case !config.tokenUse:
-      throw new TypeError(
-        "Token use not specified in constructor. Possible values 'access' | 'id'"
-      );
+      throw new TypeError("Token use not specified in constructor. Possible values 'access' | 'id'");
       break;
-    case !(config.tokenUse == "access" || config.tokenUse == "id"):
-      throw new TypeError(
-        "Token use values not accurate in the constructor. Possible values 'access' | 'id'"
-      );
+    case !(config.tokenUse == 'access' || config.tokenUse == 'id'):
+      throw new TypeError("Token use values not accurate in the constructor. Possible values 'access' | 'id'");
       break;
     default:
       configurationPassed = true;
@@ -138,7 +129,7 @@ function jwtVerify(params: JwtVerifyParams, callback: jwt.VerifyCallback) {
     function (err, payload) {
       if (err) return callback(err, undefined);
       return callback(null, payload);
-    }
+    },
   );
 }
 
