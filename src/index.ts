@@ -3,6 +3,8 @@ import * as request from 'request-promise';
 import * as jwt from 'jsonwebtoken';
 import { CognitoExpressConfig } from './CognitoExpressConfig';
 import JwtVerifyParams from './JwtVerifyParams';
+import DecodedJwt from './DecodedJwt';
+import ValidateCallback from './ValidateCallback';
 
 export const DEFAULT_TOKEN_EXPIRATION = `3600000`;
 
@@ -11,7 +13,6 @@ class CognitoExpress {
   tokenUse: string;
   tokenExpiration: string;
   iss: string;
-  promise: Promise<void>;
   pems: Record<string, string> = {};
 
   constructor(config: CognitoExpressConfig) {
@@ -25,75 +26,73 @@ class CognitoExpress {
     this.tokenUse = config.tokenUse;
     this.tokenExpiration = config.tokenExpiration || DEFAULT_TOKEN_EXPIRATION;
     this.iss = `https://cognito-idp.${config.region}.amazonaws.com/${this.userPoolId}`;
-    this.promise = this.init((callback) => {});
   }
 
-  async init(callback: (isOk: boolean) => void) {
-    return request(`${this.iss}/.well-known/jwks.json`)
-      .then((response) => {
-        let keys = JSON.parse(response)['keys'];
-        for (let i = 0; i < keys.length; i++) {
-          let key_id = keys[i].kid;
-          let modulus = keys[i].n;
-          let exponent = keys[i].e;
-          let key_type = keys[i].kty;
-          let jwk = { kty: key_type, n: modulus, e: exponent };
-          let pem = jwkToPem(jwk);
-          this.pems[key_id] = pem;
-        }
-        callback(true);
-      })
-      .catch((err) => {
-        callback(false);
-        throw new TypeError('Unable to generate certificate due to \n' + err);
-      });
-  }
-
-  validate(token: string, callback: jwt.VerifyCallback): void;
-  validate(token: string): Promise<object>;
-  validate(token: string, callback?: jwt.VerifyCallback) {
-    const p = this.promise.then(() => {
-      let decodedJwt = jwt.decode(token, {
-        complete: true,
-      }) as { [k: string]: any } | null;
-
-      if (!decodedJwt) return callback(new Error(`Not a valid JWT token`), null);
-
-      if (decodedJwt.payload.iss !== this.iss) return callback(new Error(`token is not from your User Pool`), null);
-
-      if (decodedJwt.payload.token_use !== this.tokenUse)
-        return callback(new Error(`Not an ${this.tokenUse} token`), null);
-
-      let kid = decodedJwt.header.kid;
-      let pem = this.pems && this.pems[kid];
-
-      if (!pem) return callback(new Error(`Invalid ${this.tokenUse} token`), null);
-
-      let params = {
-        token: token,
-        pem: pem,
-        iss: this.iss,
-        maxAge: this.tokenExpiration,
-      };
-
-      if (callback) {
-        jwtVerify(params, callback);
-      } else {
-        return new Promise((resolve, reject) => {
-          jwtVerify(params, (err, result) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve(result);
-            }
-          });
-        });
+  async init(callback: (isOk: boolean) => void): Promise<void> {
+    try {
+      const response = await request(`${this.iss}/.well-known/jwks.json`);
+      const keys = JSON.parse(response)['keys'];
+      for (let i = 0; i < keys.length; i++) {
+        const key_id = keys[i].kid;
+        const modulus = keys[i].n;
+        const exponent = keys[i].e;
+        const key_type = keys[i].kty;
+        const jwk = { kty: key_type, n: modulus, e: exponent };
+        const pem = jwkToPem(jwk);
+        this.pems[key_id] = pem;
       }
-    });
-
-    if (!callback) {
-      return p;
+      callback(true);
+    } catch (err) {
+      callback(false);
+      throw new TypeError('Unable to generate certificate due to \n' + err);
     }
+  }
+
+  validate(token: string, callback: ValidateCallback): void;
+  validate(token: string): Promise<Record<string, unknown>>;
+  validate(token: string, callback?: ValidateCallback): void | Promise<Record<string, unknown>> {
+    const decodedJwt = jwt.decode(token, {
+      complete: true,
+    }) as DecodedJwt | null;
+
+    if (!decodedJwt) return callbackElseThrow(new Error(`Not a valid JWT token`), callback);
+
+    if (decodedJwt.payload.iss !== this.iss)
+      return callbackElseThrow(new Error(`token is not from your User Pool`), callback);
+
+    if (decodedJwt.payload.token_use !== this.tokenUse)
+      return callbackElseThrow(new Error(`Not an ${this.tokenUse} token`), callback);
+
+    const kid = decodedJwt.header.kid;
+    const pem = this.pems && this.pems[kid];
+
+    if (!pem) return callbackElseThrow(new Error(`Invalid ${this.tokenUse} token`), callback);
+
+    const params = {
+      token: token,
+      pem: pem,
+      iss: this.iss,
+      maxAge: this.tokenExpiration,
+    };
+
+    if (callback) {
+      jwtVerify(params, callback);
+    } else {
+      return new Promise((resolve, reject) => {
+        jwtVerify(params, (err, result) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(result as Record<string, undefined>);
+          }
+        });
+      });
+    }
+    // });
+
+    // if (!callback) {
+    //   return p;
+    // }
   }
 }
 
@@ -118,7 +117,7 @@ function validateConfig(config: CognitoExpressConfig): boolean | never {
   return configurationPassed;
 }
 
-function jwtVerify(params: JwtVerifyParams, callback: jwt.VerifyCallback) {
+function jwtVerify(params: JwtVerifyParams, callback: jwt.VerifyCallback): void {
   jwt.verify(
     params.token,
     params.pem,
@@ -131,6 +130,14 @@ function jwtVerify(params: JwtVerifyParams, callback: jwt.VerifyCallback) {
       return callback(null, payload);
     },
   );
+}
+
+function callbackElseThrow(err: Error, callback?: ValidateCallback) {
+  if (callback) {
+    callback(err);
+  } else {
+    throw err;
+  }
 }
 
 export default CognitoExpress;
