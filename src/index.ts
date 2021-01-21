@@ -3,10 +3,11 @@ import * as request from 'request-promise';
 import * as jwt from 'jsonwebtoken';
 import { CognitoExpressConfig } from './CognitoExpressConfig';
 import JwtVerifyParams from './JwtVerifyParams';
+import ValidateCallback from './ValidateCallback';
 
 export const DEFAULT_TOKEN_EXPIRATION = `3600000`;
 
-class CognitoExpress {
+export class CognitoExpress {
   userPoolId: string;
   tokenUse: string;
   tokenExpiration: string;
@@ -23,7 +24,7 @@ class CognitoExpress {
     validateConfig(config);
     this.userPoolId = config.cognitoUserPoolId;
     this.tokenUse = config.tokenUse;
-    this.tokenExpiration = config.tokenExpiration || DEFAULT_TOKEN_EXPIRATION;
+    this.tokenExpiration = `${config.tokenExpiration}` || DEFAULT_TOKEN_EXPIRATION;
     this.iss = `https://cognito-idp.${config.region}.amazonaws.com/${this.userPoolId}`;
     this.promise = this.init((callback) => {});
   }
@@ -49,25 +50,26 @@ class CognitoExpress {
       });
   }
 
-  validate(token: string, callback: jwt.VerifyCallback): void;
+  validate(token: string, callback: ValidateCallback): void;
   validate(token: string): Promise<object>;
-  validate(token: string, callback?: jwt.VerifyCallback) {
+  validate(token: string, callback?: ValidateCallback) {
     const p = this.promise.then(() => {
       let decodedJwt = jwt.decode(token, {
         complete: true,
       }) as { [k: string]: any } | null;
 
-      if (!decodedJwt) return callback(new Error(`Not a valid JWT token`), null);
+      if (!decodedJwt) return callbackError(new Error(`Not a valid JWT token`), callback);
 
-      if (decodedJwt.payload.iss !== this.iss) return callback(new Error(`token is not from your User Pool`), null);
+      if (decodedJwt.payload.iss !== this.iss)
+        return callbackError(new Error(`token is not from your User Pool`), callback);
 
       if (decodedJwt.payload.token_use !== this.tokenUse)
-        return callback(new Error(`Not an ${this.tokenUse} token`), null);
+        return callbackError(new Error(`Not an ${this.tokenUse} token`), callback);
 
       let kid = decodedJwt.header.kid;
       let pem = this.pems && this.pems[kid];
 
-      if (!pem) return callback(new Error(`Invalid ${this.tokenUse} token`), null);
+      if (!pem) return callbackError(new Error(`Invalid ${this.tokenUse} token`), callback);
 
       let params = {
         token: token,
@@ -131,6 +133,14 @@ function jwtVerify(params: JwtVerifyParams, callback: jwt.VerifyCallback) {
       return callback(null, payload);
     },
   );
+}
+
+function callbackError(err: Error, callback?: ValidateCallback) {
+  if (callback) {
+    callback(err);
+  } else {
+    throw err;
+  }
 }
 
 export default CognitoExpress;

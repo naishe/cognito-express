@@ -1,0 +1,9 @@
+{
+  "nyc": {
+    "all": true,
+    "include": ["test/**.js"],
+    "exclude": [
+      // Files to be excluded
+    ]
+  }
+}
