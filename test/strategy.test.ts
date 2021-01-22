@@ -1,5 +1,4 @@
 import * as chai from 'chai';
-// import * as chaiAsPromise from 'chai-as-promised';
 import Strategy from '../src';
 import rewire from 'rewire';
 import CognitoExpressConfig from '../src/CognitoExpressConfig';
@@ -77,6 +76,16 @@ describe('Strategy Negative Scenarios', () => {
         tokenExpiration: 3600000, //Up to default expiration of 1 hour (4000 ms)
       } as CognitoExpressConfig);
     }).to.throw(TypeError, 'AWS Region not specified in constructor');
+  });
+
+  it('should fail to init', async function () {
+    const strategy = new Strategy({ ...strategyConfig, cognitoUserPoolId: 'us-east-1_DEAD_POOL' });
+    try {
+      await strategy.init(() => undefined);
+      expect(false).to.eql(true);
+    } catch (e) {
+      expect(e.message).to.match(/^Unable to generate certificate due to/);
+    }
   });
 });
 
