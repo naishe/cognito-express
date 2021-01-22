@@ -1,4 +1,4 @@
-import * as chai from 'chai';
+import chai from 'chai';
 import Strategy from '../src';
 import rewire from 'rewire';
 import CognitoExpressConfig from '../src/CognitoExpressConfig';
