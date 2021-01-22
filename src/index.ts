@@ -1,6 +1,6 @@
-import * as jwkToPem from 'jwk-to-pem';
-import * as request from 'request-promise';
-import * as jwt from 'jsonwebtoken';
+import jwkToPem from 'jwk-to-pem';
+import request from 'request-promise';
+import jwt from 'jsonwebtoken';
 import { CognitoExpressConfig } from './CognitoExpressConfig';
 import JwtVerifyParams from './JwtVerifyParams';
 import DecodedJwt from './DecodedJwt';
@@ -24,7 +24,7 @@ class CognitoExpress {
     validateConfig(config);
     this.userPoolId = config.cognitoUserPoolId;
     this.tokenUse = config.tokenUse;
-    this.tokenExpiration = config.tokenExpiration || DEFAULT_TOKEN_EXPIRATION;
+    this.tokenExpiration = `${config.tokenExpiration}` || DEFAULT_TOKEN_EXPIRATION;
     this.iss = `https://cognito-idp.${config.region}.amazonaws.com/${this.userPoolId}`;
   }
 
