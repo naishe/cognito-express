@@ -32,6 +32,7 @@
     "request-promise": "^4.2.2"
   },
   "devDependencies": {
+    "@types/babel__core": "^7.1.12",
     "@types/chai": "^4.2.14",
     "@types/jsonwebtoken": "^8.5.0",
     "@types/jwk-to-pem": "^2.0.0",
