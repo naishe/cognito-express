@@ -88,11 +88,6 @@ class CognitoExpress {
         });
       });
     }
-    // });
-
-    // if (!callback) {
-    //   return p;
-    // }
   }
 }
 
@@ -101,16 +96,12 @@ function validateConfig(config: CognitoExpressConfig): boolean | never {
   switch (true) {
     case !config.region:
       throw new TypeError('AWS Region not specified in constructor');
-      break;
     case !config.cognitoUserPoolId:
       throw new TypeError('Cognito User Pool ID is not specified in constructor');
-      break;
     case !config.tokenUse:
       throw new TypeError("Token use not specified in constructor. Possible values 'access' | 'id'");
-      break;
     case !(config.tokenUse == 'access' || config.tokenUse == 'id'):
       throw new TypeError("Token use values not accurate in the constructor. Possible values 'access' | 'id'");
-      break;
     default:
       configurationPassed = true;
   }
